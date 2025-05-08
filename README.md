@@ -129,7 +129,7 @@ Your MCP configuration should look like this -
         "envFile": "./.env",
         "type": "stdio",
         "command": "npx",
-        "args": ["tsx", "C:\\dev\\ai\\seta-salesforce-metadata-mcp\\main.ts"]
+        "args": ["tsx", "C:\\dev\\mcp\\seta-mcp\\main.ts"]
       }
     }
   }
