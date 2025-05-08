@@ -1,5 +1,7 @@
 # Seta MCP - Up-to-date Local Code Docs For Any Salesforce Prompt
 
+## WIP: Instructions do not work. Not published to NPM yet.
+
 Assist Salesforce developers to create code and configuration! This is a MCP server that you can run locally or host remotely.
 
 Designed to fetch documentation from your local file system, giving you complete control over the context provided to your AI assistant.
@@ -23,7 +25,7 @@ This MCP server reads documentation from a local directory structure you define.
 2.  **Organize Libraries**: Inside `LOCAL_DOCS_PATH`, each library or documentation set should reside in its own subdirectory.
 3.  **`manifest.json`**: Each library subdirectory **must** contain a `manifest.json` file. This file describes the library and tells the MCP server where to find specific documents (e.g., for different topics or a default document).
 
-When you prompt your LLM (e.g., in Cursor) with `use seta`:
+When you prompt your LLM (e.g., in VSCode) with `use latest Apex docs`, `use seta` or just reference any of the below tools in the prompt:
 
 - The `resolve-library-id` tool searches the `manifest.json` files in your `LOCAL_DOCS_PATH` to find matching libraries.
 - The `get-library-docs` tool then fetches the content of the specified document file from your local file system.
@@ -106,8 +108,42 @@ Add this to your VS Code MCP config file. Ensure `LOCAL_DOCS_PATH` is set in the
 If you want to run everything locally.
 
 ```bash
-git clone
+git clone https://github.com/prashanth1k/seta-mcp
+cd seta-mcp
+npm i
+npm run dev
 ```
+
+Create the document library or copy over the sample documents from this repo. e.g., `c:\\dev\\mcp\\seta-mcp\\docs`.
+
+Open your code repository in VSCode.
+
+Add MCP server with `command (stdio)`. Provide the name as `seta` and include the command specified in the configuration below.
+
+Your MCP configuration should look like this -
+
+```json
+"mcp": {
+    "servers": {
+      "seta": {
+        "envFile": "./.env",
+        "type": "stdio",
+        "command": "npx",
+        "args": ["tsx", "C:\\dev\\ai\\seta-salesforce-metadata-mcp\\main.ts"]
+      }
+    }
+  }
+```
+
+You can provide `env` as an argument instead of `envFile` - both point to the path of the document library. If you do choose `envFile`, create `.env` file in your code repo root and create the variable to point to the library path.
+
+```md
+# example
+
+LOCAL_DOCS_PATH="C:\\dev\\mcp\\seta-mcp\\docs"
+```
+
+Start the MCP server either in Agent window or directly from the settings file.
 
 ### Install in Cursor
 
