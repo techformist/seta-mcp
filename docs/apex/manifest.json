@@ -1,0 +1,17 @@
+{
+  "name": "Apex Core Language Reference",
+  "description": "Documentation for core Apex programming language features, including SOQL, DML, Triggers, and Asynchronous Apex.",
+  "version": "Salesforce API v63.0",
+  "default_doc": "apex_overview.md",
+  "topics": {
+    "overview": "apex_overview.md",
+    "dataTypes": "data_types.md",
+    "soql": "soql_basics.md",
+    "dml": "dml_operations.md",
+    "triggerSyntax": "triggers/trigger_syntax.md",
+    "triggerBestPractices": "triggers/trigger_best_practices.md",
+    "futureMethods": "async/future_methods.md",
+    "batchApex": "async/batch_apex.md"
+  },
+  "totalSnippets": 100
+}
