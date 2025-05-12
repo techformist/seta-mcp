@@ -1,0 +1,72 @@
+name: Release Seta MCP
+
+on:
+  release:
+    types:
+      - published # Runs when a new release is published on GitHub
+
+jobs:
+  publish-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Allow reading content for checkout
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set env
+        # Extracts the version from the Git tag (e.g., v1.0.1 -> 1.0.1)
+        # Assumes your GitHub release tags are like vX.Y.Z
+        run: echo "PACKAGE_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18" # Or your desired LTS version
+          registry-url: "https://registry.npmjs.org" # Important for publishing
+
+      # If you use Bun for your project (as in the upstash example):
+      # - name: Setup Bun
+      #   uses: oven-sh/setup-bun@v1
+      #   with:
+      #     bun-version: latest
+      #   run: bun install --frozen-lockfile
+      #
+      # If you use npm for your project:
+      - name: Install Dependencies (npm)
+        run: npm ci
+
+      - name: Update package.json version
+        # This uses jq to update the version. Ensure jq is available or use another method.
+        # A simpler sed approach is also possible if jq is an issue.
+        run: |
+          echo "Setting package version to ${{ env.PACKAGE_VERSION }}"
+          jq --arg v "${{ env.PACKAGE_VERSION }}" '(.version) = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+          cat package.json # To verify
+
+      - name: Update version in source file (e.g., src/index.ts)
+        # Adapt this if your version string is located elsewhere or formatted differently
+        run: |
+          sed -i "s/version: \"[0-9]*\.[0-9]*\.[0-9]*\"/version: \"${{ env.PACKAGE_VERSION }}\"/" src/index.ts
+          echo "Updated version in src/index.ts"
+
+      # If you use Bun for your project:
+      # - name: Build
+      #   run: bun run build
+      #
+      # If you use npm for your project:
+      - name: Build (npm)
+        run: npm run build
+
+      - name: Publish to NPM
+        # If github.event.release.prerelease is true, publish with a 'next' or 'beta' tag
+        # Otherwise, publish as 'latest'
+        run: |
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            npm publish --tag next --access public
+          else
+            npm publish --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

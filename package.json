@@ -1,8 +1,8 @@
 {
-  "name": "@prashanth1k/seta-mcp",
+  "name": "@techformist/seta-mcp",
   "version": "0.1.0",
   "type": "module",
-  "description": "MCP server for Salesforce documentation from local filesystem",
+  "description": "MCP server for documentation from local filesystem",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
@@ -35,6 +35,10 @@
     "README.md",
     "LICENSE"
   ],
+  "bugs": {
+    "url": "https://github.com/techformist/seta-mcp/issues"
+  },
+  "homepage": "https://github.com/techformist/seta-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
     "@salesforce/core": "^8.9.1",
@@ -53,5 +57,8 @@
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.28.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

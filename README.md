@@ -1,6 +1,4 @@
-# Seta MCP - Up-to-date Local Code Docs For Any Salesforce Prompt
-
-## WIP: Instructions do not work. Not published to NPM yet.
+# Seta MCP - Up-to-date Local Docs for Coding
 
 Assist Salesforce developers to create code and configuration! This is a MCP server that you can run locally or host remotely.
 
@@ -12,7 +10,11 @@ Inspired by context7 - but this application uses local documentation library.
 
 Seta MCP server consists of two primary components:
 
-- Use open / public, internal or proprietary documentation for Apex, LWC, configuration etc.
+- MCP server code (this repository)
+- Open / public, internal or proprietary documentation for Apex, LWC, configuration etc.
+
+Seta MCP helps you to -
+
 - Work entirely offline.
 - Have fine-grained control over the exact documentation versions and content.
 - Quickly iterate on documentation and have it immediately available to your LLM.
@@ -93,7 +95,7 @@ Add this to your VS Code MCP config file. Ensure `LOCAL_DOCS_PATH` is set in the
     "Seta": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@prashanth1k/seta-mcp@latest"],
+      "args": ["-y", "@techformist/seta-mcp@latest"],
       "options": {
         // VS Code uses "options.env"
         "env": {
@@ -108,7 +110,7 @@ Add this to your VS Code MCP config file. Ensure `LOCAL_DOCS_PATH` is set in the
 If you want to run everything locally.
 
 ```bash
-git clone https://github.com/prashanth1k/seta-mcp
+git clone https://github.com/techformist/seta-mcp
 cd seta-mcp
 npm i
 npm run dev
@@ -158,7 +160,7 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
   "mcpServers": {
     "seta": {
       "command": "npx",
-      "args": ["-y", "@prashanth1k/seta-mcp@latest"],
+      "args": ["-y", "@techformist/seta-mcp@latest"],
       "env": {
         "LOCAL_DOCS_PATH": "/path/to/your/documentation_root" // <-- IMPORTANT! Set this
         // "DEFAULT_MINIMUM_TOKENS": "1000" // Optional
@@ -233,7 +235,7 @@ Ensure `LOCAL_DOCS_PATH` is set in your environment.
 ```bash
 # For published version
 # export LOCAL_DOCS_PATH="/path/to/your/docs"
-npx -y @modelcontextprotocol/inspector npx @prashanth1k/seta-mcp@latest
+npx -y @modelcontextprotocol/inspector npx @techformist/seta-mcp@latest
 ```
 
 ## Disclaimer
