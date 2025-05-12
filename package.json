@@ -1,16 +1,20 @@
 {
-  "name": "seta",
+  "name": "@prashanth1k/seta-mcp",
   "version": "0.1.0",
   "type": "module",
-  "description": "MCP server for Salesforce",
+  "description": "MCP server for Salesforce documentation from local filesystem",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "scripts": {
     "dev": "npx tsx main.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "format": "prettier --write .",
     "lint": "eslint \"**/*.{js,ts,tsx}\" --fix"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/prashanth1k/seta.git"
+    "url": "git+https://github.com/techformist/seta-mcp.git"
   },
   "keywords": [
     "modelcontextprotocol",
@@ -24,10 +28,12 @@
   "author": "prashanth1k",
   "license": "MIT",
   "bin": {
-    "seta-mcp": "dist/index.js"
+    "seta-mcp": "dist/main.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",

@@ -1,0 +1,23 @@
+# Source
+*.ts
+!*.d.ts
+
+# Development
+.vscode/
+.idea/
+.git/
+.github/
+.gitignore
+.eslintrc*
+.prettier*
+tsconfig.json
+.env*
+
+# Testing
+test/
+coverage/
+*.test.ts
+*.spec.ts
+
+# Build process
+node_modules/
