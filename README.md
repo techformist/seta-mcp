@@ -116,7 +116,7 @@ npm i
 npm run dev
 ```
 
-Create the document library or copy over the sample documents from this repo. e.g., `c:\\dev\\mcp\\seta-mcp\\docs`.
+Create document library or copy over existing LLM-friendly documentation to a local folder. e.g., `c:\\dev\\mcp\\seta-mcp\\docs`.
 
 Open your code repository in VSCode.
 
