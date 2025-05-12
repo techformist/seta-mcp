@@ -45,12 +45,6 @@ jobs:
           jq --arg v "${{ env.PACKAGE_VERSION }}" '(.version) = $v' package.json > package.json.tmp && mv package.json.tmp package.json
           cat package.json # To verify
 
-      - name: Update version in source file (e.g., src/index.ts)
-        # Adapt this if your version string is located elsewhere or formatted differently
-        run: |
-          sed -i "s/version: \"[0-9]*\.[0-9]*\.[0-9]*\"/version: \"${{ env.PACKAGE_VERSION }}\"/" src/index.ts
-          echo "Updated version in src/index.ts"
-
       # If you use Bun for your project:
       # - name: Build
       #   run: bun run build
