@@ -1,9 +1,16 @@
+export interface Topic {
+  name: string;
+  file: string;
+  related?: string[];
+  tags?: string[];
+}
+
 export interface LocalLibraryManifest {
   name: string;
   description?: string;
   version?: string;
   default_doc?: string; // e.g., "readme.md"
-  topics?: Record<string, string>; // e.g., { "getting-started": "docs/getting-started.md" }
+  topics: Topic[]; // Now only an array of Topic objects
   stars?: number;
   totalSnippets?: number;
 }

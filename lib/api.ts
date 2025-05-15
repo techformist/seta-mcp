@@ -1,6 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
-import { LocalSearchResponse, LocalLibraryManifest, LocalSearchResultItem } from "./types.js";
+import {
+  LocalSearchResponse,
+  LocalLibraryManifest,
+  LocalSearchResultItem,
+} from "./types.js";
 
 let localDocsPath: string | undefined = process.env.LOCAL_DOCS_PATH;
 
@@ -16,21 +20,26 @@ export function initializeLocalApi(docsPath?: string) {
   }
 }
 
-
 /**
  * Searches for local libraries matching the given query.
  * @param query The search query (matches against manifest name and description)
  * @returns Search results or null if the base path is not configured or an error occurs.
  */
-export async function searchLocalLibraries(query: string): Promise<LocalSearchResponse | null> {
+export async function searchLocalLibraries(
+  query: string
+): Promise<LocalSearchResponse | null> {
   if (!localDocsPath) {
     console.error("LOCAL_DOCS_PATH is not configured.");
     return { results: [] };
   }
 
   try {
-    const Direntsoriginal = await fs.readdir(localDocsPath, { withFileTypes: true });
-    const directories = Direntsoriginal.filter(dirent => dirent.isDirectory());
+    const Direntsoriginal = await fs.readdir(localDocsPath, {
+      withFileTypes: true,
+    });
+    const directories = Direntsoriginal.filter((dirent) =>
+      dirent.isDirectory()
+    );
     const results: LocalSearchResultItem[] = [];
     const lowerCaseQuery = query.toLowerCase();
 
@@ -38,12 +47,36 @@ export async function searchLocalLibraries(query: string): Promise<LocalSearchRe
       const manifestPath = path.join(localDocsPath, dir.name, "manifest.json");
       try {
         const manifestContent = await fs.readFile(manifestPath, "utf-8");
-        const manifest = JSON.parse(manifestContent) as LocalLibraryManifest;
+        const manifest = JSON.parse(manifestContent);
 
-        const nameMatch = manifest.name.toLowerCase().includes(lowerCaseQuery);
-        const descriptionMatch = manifest.description?.toLowerCase().includes(lowerCaseQuery);
+        console.log("lowerCaseQuery", lowerCaseQuery);
 
-        if (nameMatch || descriptionMatch) {
+        let topicMatch = false;
+        if (Array.isArray(manifest.topics)) {
+          for (const topic of manifest.topics as any[]) {
+            if (
+              (topic.name &&
+                typeof topic.name === "string" &&
+                topic.name.toLowerCase().includes(lowerCaseQuery)) ||
+              (Array.isArray(topic.tags) &&
+                (topic.tags as string[]).some((tag: string) =>
+                  tag.toLowerCase().includes(lowerCaseQuery)
+                ))
+            ) {
+              console.log("topicMatch", topic.name, topic.tags);
+              topicMatch = true;
+              break;
+            }
+          }
+        }
+
+        const nameMatch =
+          manifest.name && manifest.name.toLowerCase().includes(lowerCaseQuery);
+        const descriptionMatch =
+          manifest.description &&
+          manifest.description.toLowerCase().includes(lowerCaseQuery);
+
+        if (nameMatch || descriptionMatch || topicMatch) {
           results.push({
             id: dir.name, // Use directory name as ID
             name: manifest.name,
@@ -54,7 +87,6 @@ export async function searchLocalLibraries(query: string): Promise<LocalSearchRe
         }
       } catch (err) {
         // Ignore directories without manifest.json or with malformed manifest
-        // console.warn(`Skipping directory ${dir.name}: could not read or parse manifest.json`, err);
       }
     }
     return { results };
@@ -87,26 +119,112 @@ export async function fetchLocalLibraryDocumentation(
 
   try {
     const manifestContent = await fs.readFile(manifestPath, "utf-8");
-    const manifest = JSON.parse(manifestContent) as LocalLibraryManifest;
+    const manifest = JSON.parse(manifestContent);
 
     let docFileName: string | undefined;
+    let allContent: string[] = [];
 
-    if (options.topic && manifest.topics && manifest.topics[options.topic]) {
-      docFileName = manifest.topics[options.topic];
-    } else if (manifest.default_doc) {
+    if (options.topic && Array.isArray(manifest.topics)) {
+      const searchTerm = options.topic.toLowerCase();
+      // First try exact match
+      let mainTopic = manifest.topics.find(
+        (t: any) =>
+          t.name.toLowerCase() === searchTerm ||
+          (Array.isArray(t.tags) &&
+            t.tags.some((tag: string) => tag.toLowerCase() === searchTerm))
+      );
+
+      // If no exact match, try partial match
+      if (!mainTopic) {
+        mainTopic = manifest.topics.find(
+          (t: any) =>
+            t.name.toLowerCase().includes(searchTerm) ||
+            (Array.isArray(t.tags) &&
+              t.tags.some(
+                (tag: string) =>
+                  tag.toLowerCase().includes(searchTerm) ||
+                  searchTerm.includes(tag.toLowerCase())
+              ))
+        );
+      }
+
+      // First get the main topic content
+      if (mainTopic && typeof mainTopic.file === "string") {
+        const docFileName = mainTopic.file;
+        const mainFilePath = path.join(libPath, docFileName);
+        console.log("mainTopic", mainTopic);
+        console.log("mainFilePath", mainFilePath);
+        try {
+          const mainContent = await fs.readFile(mainFilePath, "utf-8");
+          allContent.push(
+            `# ${mainTopic.name.toUpperCase()}\n\n${mainContent}`
+          );
+
+          // Then get content from related topics
+          if (
+            Array.isArray(mainTopic.related) &&
+            mainTopic.related.length > 0
+          ) {
+            for (const relatedName of mainTopic.related) {
+              const relatedTopic = manifest.topics.find(
+                (t: any) => t.name.toLowerCase() === relatedName.toLowerCase()
+              );
+              if (relatedTopic && typeof relatedTopic.file === "string") {
+                const relatedFilePath = path.join(libPath, relatedTopic.file);
+                console.log("relatedTopic", relatedTopic);
+                console.log("relatedFilePath", relatedFilePath);
+                try {
+                  const relatedContent = await fs.readFile(
+                    relatedFilePath,
+                    "utf-8"
+                  );
+                  allContent.push(
+                    `\n\n# RELATED: ${relatedTopic.name.toUpperCase()}\n\n${relatedContent}`
+                  );
+                } catch (err) {
+                  console.warn(
+                    `Could not read related topic file: ${relatedTopic.file}`
+                  );
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`Could not read main topic file: ${docFileName}`);
+        }
+      }
+    }
+
+    // If we found any content (main or related), return it
+    if (allContent.length > 0) {
+      let combinedContent = allContent.join("\n\n");
+      if (options.tokens && combinedContent.length > options.tokens) {
+        combinedContent = combinedContent.substring(0, options.tokens);
+      }
+      return combinedContent;
+    }
+
+    // Fallback to default_doc if no topic-specific content was found
+    if (!docFileName && manifest.default_doc) {
       docFileName = manifest.default_doc;
-    } else {
-      console.warn(`No matching topic '${options.topic}' and no default_doc for library ${libraryId}.`);
+    }
+
+    if (!docFileName) {
       // Try to find any .md file as a fallback
       const filesInLib = await fs.readdir(libPath);
-      docFileName = filesInLib.find(f => f.endsWith('.md') || f.endsWith('.txt'));
+      docFileName = filesInLib.find(
+        (f: string) => f.endsWith(".md") || f.endsWith(".txt")
+      );
       if (!docFileName) {
         console.error(`No documentation file found for library ${libraryId}.`);
         return null;
       }
-      console.warn(`Using fallback document: ${docFileName} for library ${libraryId}`);
+      console.warn(
+        `Using fallback document: ${docFileName} for library ${libraryId}`
+      );
     }
 
+    // Read the fallback document if we didn't find topic-specific content
     const docFilePath = path.join(libPath, docFileName);
     let content = await fs.readFile(docFilePath, "utf-8");
 
@@ -116,7 +234,10 @@ export async function fetchLocalLibraryDocumentation(
 
     return content;
   } catch (error) {
-    console.error(`Error fetching local documentation for ${libraryId}:`, error);
+    console.error(
+      `Error fetching local documentation for ${libraryId}:`,
+      error
+    );
     return null;
   }
 }

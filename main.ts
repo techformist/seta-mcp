@@ -23,15 +23,15 @@ if (!localDocsPath) {
 }
 initializeLocalApi(localDocsPath);
 
-// Get DEFAULT_MINIMUM_TOKENS from environment variable or use default
-let DEFAULT_MINIMUM_TOKENS = 1000; // This will now be a character limit
-if (process.env.DEFAULT_MINIMUM_TOKENS) {
-  const parsedValue = parseInt(process.env.DEFAULT_MINIMUM_TOKENS, 10);
+// Get DEFAULT_MAX_TOKENS from environment variable or use default
+let DEFAULT_MAX_TOKENS = 5000; // This will now be a character limit
+if (process.env.DEFAULT_MAX_TOKENS) {
+  const parsedValue = parseInt(process.env.DEFAULT_MAX_TOKENS, 10);
   if (!isNaN(parsedValue) && parsedValue > 0) {
-    DEFAULT_MINIMUM_TOKENS = parsedValue;
+    DEFAULT_MAX_TOKENS = parsedValue;
   } else {
     console.warn(
-      `Warning: Invalid DEFAULT_MINIMUM_TOKENS value provided. Using default of ${DEFAULT_MINIMUM_TOKENS} characters.`
+      `Warning: Invalid DEFAULT_MAX_TOKENS value provided. Using default of ${DEFAULT_MAX_TOKENS} characters.`
     );
   }
 }
@@ -128,15 +128,13 @@ server.tool(
         (val) => (typeof val === "string" ? Number(val) : val),
         z.number()
       )
-      .transform((val) =>
-        val < DEFAULT_MINIMUM_TOKENS ? DEFAULT_MINIMUM_TOKENS : val
-      )
+      .transform((val) => (val > DEFAULT_MAX_TOKENS ? DEFAULT_MAX_TOKENS : val))
       .optional()
       .describe(
-        `Maximum number of characters (approx. tokens) of documentation to retrieve (default: ${DEFAULT_MINIMUM_TOKENS}). Higher values provide more context. Content will be truncated if it exceeds this limit.`
+        `Maximum number of characters (approx. tokens) of documentation to retrieve (default: ${DEFAULT_MAX_TOKENS}). Lower values provide less context.`
       ),
   },
-  async ({ localLibraryID, tokens = DEFAULT_MINIMUM_TOKENS, topic = "" }) => {
+  async ({ localLibraryID, tokens = DEFAULT_MAX_TOKENS, topic = "" }) => {
     const documentationText = await fetchLocalLibraryDocumentation(
       localLibraryID,
       {
@@ -178,9 +176,7 @@ async function main() {
   await server.connect(transport);
   console.error(`seta MCP Server running on stdio.`);
   console.error(`Reading documentation from: ${localDocsPath}`);
-  console.error(
-    `Default minimum characters for docs: ${DEFAULT_MINIMUM_TOKENS}`
-  );
+  console.error(`Default maximum characters for docs: ${DEFAULT_MAX_TOKENS}`);
 }
 
 main().catch((error) => {
