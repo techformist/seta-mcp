@@ -49,8 +49,6 @@ export async function searchLocalLibraries(
         const manifestContent = await fs.readFile(manifestPath, "utf-8");
         const manifest = JSON.parse(manifestContent);
 
-        console.log("lowerCaseQuery", lowerCaseQuery);
-
         let topicMatch = false;
         if (Array.isArray(manifest.topics)) {
           for (const topic of manifest.topics as any[]) {
@@ -152,8 +150,6 @@ export async function fetchLocalLibraryDocumentation(
       if (mainTopic && typeof mainTopic.file === "string") {
         const docFileName = mainTopic.file;
         const mainFilePath = path.join(libPath, docFileName);
-        console.log("mainTopic", mainTopic);
-        console.log("mainFilePath", mainFilePath);
         try {
           const mainContent = await fs.readFile(mainFilePath, "utf-8");
           allContent.push(
@@ -171,8 +167,6 @@ export async function fetchLocalLibraryDocumentation(
               );
               if (relatedTopic && typeof relatedTopic.file === "string") {
                 const relatedFilePath = path.join(libPath, relatedTopic.file);
-                console.log("relatedTopic", relatedTopic);
-                console.log("relatedFilePath", relatedFilePath);
                 try {
                   const relatedContent = await fs.readFile(
                     relatedFilePath,
