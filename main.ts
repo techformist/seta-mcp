@@ -4,6 +4,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import "dotenv/config";
+import path from "path";
+import fs from "fs/promises";
 
 import {
   initializeLocalApi,
@@ -17,7 +19,7 @@ const localDocsPath = process.env.LOCAL_DOCS_PATH;
 
 if (!localDocsPath) {
   console.error(
-    "FATAL: LOCAL_DOCS_PATH environment variable is not set. The server cannot operate without it."
+    "FATAL: LOCAL_DOCS_PATH environment variable is not set. The server cannot operate without it.",
   );
   process.exit(1); // Exit if critical env var is missing
 }
@@ -31,7 +33,7 @@ if (process.env.DEFAULT_MAX_TOKENS) {
     DEFAULT_MAX_TOKENS = parsedValue;
   } else {
     console.warn(
-      `Warning: Invalid DEFAULT_MAX_TOKENS value provided. Using default of ${DEFAULT_MAX_TOKENS} characters.`
+      `Warning: Invalid DEFAULT_MAX_TOKENS value provided. Using default of ${DEFAULT_MAX_TOKENS} characters.`,
     );
   }
 }
@@ -50,7 +52,7 @@ const server = new McpServer({
 // Register tools
 server.tool(
   "resolve-library-id",
-  `Resolves library, framework, or technology names (like Apex, LWC, Visualforce, SOQL, DML, Triggers, Batch Apex, Asynchronous Apex, Salesforce APIs) into a unique local documentation ID. Use this tool first when you need up-to-date documentation, code examples, or best practices for Salesforce development tasks mentioned in the prompt. Provides a list of potential matches with descriptions and indicators like code snippet count or popularity.`,
+  `Resolves library, framework, or technology names (like Apex, LWC, Visualforce, SOQL, DML, Triggers, Batch Apex, Asynchronous Apex, Salesforce APIs) into a unique local documentation ID. Returns detailed information about libraries including difficulties, use cases, semantic groups, and learning paths to help make better choices. Use this tool first when you need up-to-date documentation, code examples, or best practices for Salesforce development tasks mentioned in the prompt.`,
   {
     libraryName: z
       .string()
@@ -87,51 +89,51 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Available Local Libraries (top matches):
+          text: `Found the following local libraries matching '${libraryName}':
 
 Each result includes:
-- Local Library ID: Directory name for use with 'get-library-docs'
-- Name: Library name from manifest
-- Description: Short summary from manifest
-- Code Snippets (optional): Number of available code examples (from manifest)
-- GitHub Stars (optional): Popularity indicator (from manifest)
+- Name & Version: Official library name and version.
+- Local Library ID: Directory name for use with 'get-library-docs'.
+- Description: Short summary.
+- Topics: Number of distinct topics within this library.
+- Available Difficulties: Difficulty levels covered (e.g., beginner, intermediate).
+- Sample Use Cases: Examples of what this library helps achieve.
+- Semantic Groups: Pre-defined collections of related topics (e.g., "fundamentals", "ui_styling"). You can request docs for a whole group.
+- Learning Paths: Suggested sequences of topics for learning (e.g., "beginner", "intermediate"). You can request docs for a whole path.
 
-For best results, select libraries based on name match and relevance to your use case.
-Make sure your LOCAL_DOCS_PATH is set correctly and contains the library directories with manifest.json.
-
+Use 'get-library-docs' with a Local Library ID and optionally a specific topic name, semantic group, or learning path.
 ---
-
 ${resultsText}`,
         },
       ],
     };
-  }
+  },
 );
 
 server.tool(
   "get-library-docs",
-  "Fetches specific, up-to-date documentation, code examples, API details, and best practices for a given local library ID (obtained from 'resolve-library-id'). Use this tool *after* identifying the correct library ID to get detailed context for tasks like writing Apex classes, LWC components, SOQL queries, understanding governor limits, implementing triggers, or using specific Salesforce features. Can optionally focus on a specific 'topic' within the documentation (e.g., 'DML Operations', 'Batch Apex Limits').",
+  "Fetches specific, up-to-date documentation, code examples, API details, and best practices for a given local library ID (obtained from 'resolve-library-id'). When requesting a specific topic, automatically includes context from prerequisites, related topics, and next steps. The 'topic' parameter can also be a semantic group name or learning path name from the library's manifest to get an overview of that collection. Use this tool *after* identifying the correct library ID to get detailed context for tasks like writing Apex classes, LWC components, SOQL queries, understanding governor limits, implementing triggers, or using specific Salesforce features.",
   {
     localLibraryID: z
       .string()
       .describe(
-        "Exact local library ID (directory name, e.g., 'my-library') retrieved from 'resolve-library-id'."
+        "Exact local library ID (directory name, e.g., 'my-library') retrieved from 'resolve-library-id'.",
       ),
     topic: z
       .string()
       .optional()
       .describe(
-        "Topic to focus documentation on (maps to a file in the library's manifest.json)."
+        "Topic name, semantic group name, or learning path name to focus documentation on. When a topic is specified, includes context from prerequisites, related topics, and next steps.",
       ),
     tokens: z
       .preprocess(
         (val) => (typeof val === "string" ? Number(val) : val),
-        z.number()
+        z.number(),
       )
       .transform((val) => (val > DEFAULT_MAX_TOKENS ? DEFAULT_MAX_TOKENS : val))
       .optional()
       .describe(
-        `Maximum number of characters (approx. tokens) of documentation to retrieve (default: ${DEFAULT_MAX_TOKENS}). Lower values provide less context.`
+        `Maximum number of characters (approx. tokens) of documentation to retrieve (default: ${DEFAULT_MAX_TOKENS}). Lower values provide less context.`,
       ),
   },
   async ({ localLibraryID, tokens = DEFAULT_MAX_TOKENS, topic = "" }) => {
@@ -140,7 +142,7 @@ server.tool(
       {
         tokens,
         topic,
-      }
+      },
     );
 
     if (!documentationText) {
@@ -151,7 +153,7 @@ server.tool(
             text: `Documentation not found for local library ID '${localLibraryID}' (topic: '${topic || "default"}').
 This might happen if:
 1. The local library ID is incorrect (use 'resolve-library-id' first).
-2. The library's manifest.json is missing, malformed, or doesn't define the topic/default document.
+2. The library's manifest.json is missing, malformed, or doesn't define the topic/semantic group/learning path/default document.
 3. The document file itself is missing or unreadable.
 4. LOCAL_DOCS_PATH is not configured correctly on the server.`, // MODIFIED error message
           },
@@ -167,7 +169,246 @@ This might happen if:
         },
       ],
     };
-  }
+  },
+);
+
+server.tool(
+  "list-topics-for-library",
+  "Lists all topics within a specific library with their metadata (difficulty, use cases, prerequisites, leads_to). Useful for exploring what's available in a library before fetching specific documentation. Can filter by difficulty or use case keywords.",
+  {
+    localLibraryID: z
+      .string()
+      .describe("Exact local library ID retrieved from 'resolve-library-id'."),
+    difficulty: z
+      .string()
+      .optional()
+      .describe(
+        "Filter topics by difficulty level (e.g., 'beginner', 'intermediate', 'advanced').",
+      ),
+    use_case_keyword: z
+      .string()
+      .optional()
+      .describe("Filter topics that include this keyword in their use_cases."),
+  },
+  async ({ localLibraryID, difficulty, use_case_keyword }) => {
+    if (!localDocsPath) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "LOCAL_DOCS_PATH is not configured.",
+          },
+        ],
+      };
+    }
+
+    const libPath = path.join(localDocsPath, localLibraryID);
+    const manifestPath = path.join(libPath, "manifest.json");
+
+    try {
+      const manifestContent = await fs.readFile(manifestPath, "utf-8");
+      const manifest = JSON.parse(manifestContent);
+
+      if (!Array.isArray(manifest.topics)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No topics found in library '${localLibraryID}'.`,
+            },
+          ],
+        };
+      }
+
+      let filteredTopics = manifest.topics;
+
+      // Apply difficulty filter
+      if (difficulty) {
+        filteredTopics = filteredTopics.filter(
+          (topic: any) =>
+            topic.difficulty?.toLowerCase() === difficulty.toLowerCase(),
+        );
+      }
+
+      // Apply use case keyword filter
+      if (use_case_keyword) {
+        const keyword = use_case_keyword.toLowerCase();
+        filteredTopics = filteredTopics.filter(
+          (topic: any) =>
+            Array.isArray(topic.use_cases) &&
+            topic.use_cases.some((uc: string) =>
+              uc.toLowerCase().includes(keyword),
+            ),
+        );
+      }
+
+      if (filteredTopics.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No topics found matching the specified filters in library '${localLibraryID}'.`,
+            },
+          ],
+        };
+      }
+
+      const topicsList = filteredTopics
+        .map((topic: any) => {
+          const lines = [
+            `**${topic.name}**`,
+            `- File: ${topic.file}`,
+            `- Difficulty: ${topic.difficulty || "N/A"}`,
+          ];
+
+          if (topic.use_cases?.length) {
+            lines.push(`- Use Cases: ${topic.use_cases.join(", ")}`);
+          }
+
+          if (topic.prerequisites?.length) {
+            lines.push(`- Prerequisites: ${topic.prerequisites.join(", ")}`);
+          }
+
+          if (topic.leads_to?.length) {
+            lines.push(`- Leads To: ${topic.leads_to.join(", ")}`);
+          }
+
+          if (topic.tags?.length) {
+            lines.push(`- Tags: ${topic.tags.join(", ")}`);
+          }
+
+          if (topic.code_patterns?.length) {
+            lines.push(`- Code Patterns: ${topic.code_patterns.join(", ")}`);
+          }
+
+          return lines.join("\n");
+        })
+        .join("\n\n---\n\n");
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Topics in library '${localLibraryID}' (${filteredTopics.length} found):\n\n${topicsList}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error reading library manifest for '${localLibraryID}': ${error}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+server.tool(
+  "get-topic-details",
+  "Gets detailed metadata for a specific topic without fetching its full documentation content. Useful for understanding a topic's context, difficulty, prerequisites, and relationships before committing to fetching its full documentation.",
+  {
+    localLibraryID: z
+      .string()
+      .describe("Exact local library ID retrieved from 'resolve-library-id'."),
+    topicName: z.string().describe("Name of the topic to get details for."),
+  },
+  async ({ localLibraryID, topicName }) => {
+    if (!localDocsPath) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "LOCAL_DOCS_PATH is not configured.",
+          },
+        ],
+      };
+    }
+
+    const libPath = path.join(localDocsPath, localLibraryID);
+    const manifestPath = path.join(libPath, "manifest.json");
+
+    try {
+      const manifestContent = await fs.readFile(manifestPath, "utf-8");
+      const manifest = JSON.parse(manifestContent);
+
+      if (!Array.isArray(manifest.topics)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No topics found in library '${localLibraryID}'.`,
+            },
+          ],
+        };
+      }
+
+      const topic = manifest.topics.find(
+        (t: any) => t.name.toLowerCase() === topicName.toLowerCase(),
+      );
+
+      if (!topic) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Topic '${topicName}' not found in library '${localLibraryID}'.`,
+            },
+          ],
+        };
+      }
+
+      const details = [
+        `# Topic Details: ${topic.name}`,
+        `- File: ${topic.file}`,
+        `- Difficulty: ${topic.difficulty || "N/A"}`,
+      ];
+
+      if (topic.use_cases?.length) {
+        details.push(`- Use Cases: ${topic.use_cases.join(", ")}`);
+      }
+
+      if (topic.prerequisites?.length) {
+        details.push(`- Prerequisites: ${topic.prerequisites.join(", ")}`);
+      }
+
+      if (topic.leads_to?.length) {
+        details.push(`- Leads To: ${topic.leads_to.join(", ")}`);
+      }
+
+      if (topic.related?.length) {
+        details.push(`- Related Topics: ${topic.related.join(", ")}`);
+      }
+
+      if (topic.tags?.length) {
+        details.push(`- Tags: ${topic.tags.join(", ")}`);
+      }
+
+      if (topic.code_patterns?.length) {
+        details.push(`- Code Patterns: ${topic.code_patterns.join(", ")}`);
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: details.join("\n"),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error reading topic details for '${topicName}' in library '${localLibraryID}': ${error}`,
+          },
+        ],
+      };
+    }
+  },
 );
 
 async function main() {

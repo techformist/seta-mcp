@@ -14,6 +14,6 @@ export function registerGreetingResource(server: McpServer) {
           text: `Hello, ${name}!`,
         },
       ],
-    })
+    }),
   );
 }
