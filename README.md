@@ -8,29 +8,33 @@ Inspired by context7 - but this application uses local documentation library.
 
 ## Why use this?
 
-Seta MCP server consists of two primary components:
+Seta MCP server consists of three primary components:
 
 - MCP server code (this repository)
 - Open / public, internal or proprietary documentation for Apex, LWC, configuration etc.
+- **NEW**: Semantic search indexer for intelligent document discovery
 
 Seta MCP helps you to -
 
 - Work entirely offline.
 - Have fine-grained control over the exact documentation versions and content.
 - Quickly iterate on documentation and have it immediately available to your LLM.
+- **NEW**: Find relevant documentation using semantic search, even when exact keywords don't match.
 
 ## 💡 How It Works?
 
-This MCP server reads documentation from a local directory structure you define.
+This MCP server reads documentation from a local directory structure you define and optionally creates a semantic search index for intelligent document discovery.
 
 1.  **Set `LOCAL_DOCS_PATH`**: You specify a root directory for your documentation via the `LOCAL_DOCS_PATH` environment variable.
 2.  **Organize Libraries**: Inside `LOCAL_DOCS_PATH`, each library or documentation set should reside in its own subdirectory.
-3.  **`manifest.json`**: Each library subdirectory **must** contain a `manifest.json` file. This file describes the library and tells the MCP server where to find specific documents (e.g., for different topics or a default document).
+3.  **Enhanced `manifest.json`**: Each library subdirectory **must** contain a `manifest.json` file with rich metadata including difficulty levels, use cases, learning paths, and semantic groups.
+4.  **Optional Semantic Indexing**: Run `seta-indexer` to create a vector database for semantic search capabilities.
 
 When you prompt your LLM (e.g., in VSCode) with `use latest Apex docs`, `use seta` or just reference any of the below tools in the prompt:
 
-- The `resolve-library-id` tool searches the `manifest.json` files in your `LOCAL_DOCS_PATH` to find matching libraries.
+- The `get-library-id` tool searches the `manifest.json` files in your `LOCAL_DOCS_PATH` to find matching libraries.
 - The `get-library-docs` tool then fetches the content of the specified document file from your local file system.
+- **NEW**: The `get-semantic-docs` tool performs vector similarity search to find conceptually relevant content.
 
 ## 🛠️ Getting Started
 
@@ -50,6 +54,7 @@ Your `LOCAL_DOCS_PATH` should point to a root directory. Inside this, each libra
 ├── my-awesome-lib/
 │   ├── manifest.json
 │   ├── main_guide.md
+│   ├── .seta_lancedb/          # Created by seta-indexer (optional)
 │   └── topics/
 │       └── report.md
 │       └── advanced_reports.txt
@@ -58,9 +63,9 @@ Your `LOCAL_DOCS_PATH` should point to a root directory. Inside this, each libra
     └── quick_start.md
 ```
 
-### `manifest.json` Format
+### Enhanced `manifest.json` Format
 
-Each library directory (e.g., `my-awesome-lib/`) **must** contain a `manifest.json` file in the following format:
+Each library directory (e.g., `my-awesome-lib/`) **must** contain a `manifest.json` file in the following enhanced format:
 
 ```json
 {
@@ -73,30 +78,100 @@ Each library directory (e.g., `my-awesome-lib/`) **must** contain a `manifest.js
       "name": "report",
       "file": "report.md",
       "tags": ["report"],
-      "related": []
+      "related": ["advanced"],
+      "prerequisites": [],
+      "leads_to": ["advanced"],
+      "difficulty": "beginner",
+      "use_cases": ["basic reporting", "data visualization"],
+      "code_patterns": ["SOQL queries", "report types"]
     },
     {
       "name": "advanced",
       "file": "topics/advanced_reports.txt",
       "tags": ["advanced"],
-      "related": ["report"]
+      "related": ["report"],
+      "prerequisites": ["report"],
+      "leads_to": [],
+      "difficulty": "advanced",
+      "use_cases": ["complex analytics", "custom report types"],
+      "code_patterns": ["dynamic SOQL", "custom report builders"]
     }
   ],
+  "semantic_groups": {
+    "fundamentals": ["report"],
+    "advanced_features": ["advanced"]
+  },
+  "learning_paths": {
+    "beginner": ["report"],
+    "expert": ["report", "advanced"]
+  },
   "totalSnippets": 25 // Optional: for display purposes
 }
 ```
 
-- `topics`: An array of topic objects. Each topic must have:
-  - `name` (string): The topic identifier (used for lookup and search)
-  - `file` (string): Path to the documentation file (relative to `manifest.json`)
-  - `tags` (array of strings, optional): Used for search
-  - `related` (array of strings, optional): Related topic names
+**Enhanced topic properties:**
 
-**How topic lookup and file resolution works:**
+- `prerequisites` (array of strings, optional): Topics that should be understood first
+- `leads_to` (array of strings, optional): Topics that naturally follow this one
+- `difficulty` (string, optional): "beginner", "intermediate", or "advanced"
+- `use_cases` (array of strings, optional): Practical applications of this topic
+- `code_patterns` (array of strings, optional): Code patterns or techniques covered
 
-- When searching, the server matches your query against the library name, description, and each topic's `name` and `tags`.
-- When fetching documentation for a topic, the server looks up the topic by `name` and uses the associated `file` path.
-- If no topic is specified or found, `default_doc` is used. If that's missing, the server tries to find any `.md` or `.txt` file as a fallback.
+**New library-level properties:**
+
+- `semantic_groups` (object, optional): Named collections of related topics
+- `learning_paths` (object, optional): Suggested sequences of topics for different skill levels
+
+**How enhanced topic lookup works:**
+
+- When searching, the server matches your query against library name, description, topic names, tags, use_cases, and code_patterns.
+- When fetching documentation for a topic, the server automatically includes context from prerequisites, related topics, and next steps.
+- You can request entire semantic groups or learning paths by name.
+
+## 🔍 Semantic Search with seta-indexer
+
+The `seta-indexer` command creates a vector database for semantic search capabilities.
+
+### Creating the Semantic Search Index
+
+```bash
+# Index your documentation for semantic search
+npx @techformist/seta-mcp@latest seta-indexer <path_to_your_docs_folder>
+
+# With options
+npx @techformist/seta-mcp@latest seta-indexer /path/to/docs --verbose --chunk-size 1500 --chunk-overlap 300
+
+# Force re-indexing of all files
+npx @techformist/seta-mcp@latest seta-indexer /path/to/docs --force
+```
+
+If you are running the indexer locally, you can run the following command to start the MCP server:
+
+```bash
+#Build the project:
+npm run build
+#Run the indexer:
+node dist/indexer/cli.js "C:\dev\1p\ai\seta-salesforce-docs"
+```
+
+**Indexer Options:**
+
+- `--verbose, -v`: Enable detailed logging
+- `--force`: Force re-indexing of all files (ignores change detection)
+- `--chunk-size <size>`: Chunk size in characters (default: 1000)
+- `--chunk-overlap <overlap>`: Overlap between chunks in characters (default: 200)
+
+**What the indexer does:**
+
+1. Scans all documentation files in your `LOCAL_DOCS_PATH`
+2. Processes regular libraries (with `manifest.json`) AND the special `_semantic_only` folder
+3. Splits documents into chunks with intelligent boundary detection
+4. Generates vector embeddings using a lightweight AI model
+5. Stores everything in a LanceDB database (`.seta_lancedb` folder)
+6. Tracks file changes for incremental updates
+
+**File Change Detection:**
+The indexer maintains an index state file that tracks file hashes and modification times. On subsequent runs, it only processes new or changed files, making updates very fast.
 
 ### Install in VS Code
 
@@ -196,14 +271,86 @@ export DEFAULT_MAX_TOKENS="5000"
 
 See sample [LLM-friendly Apex docs](https://github.com/prashanth1k/seta-apex-docs-example) for an example documentation library.
 
+### Special Folder: `_semantic_only`
+
+You can create a special folder named `_semantic_only` within your `LOCAL_DOCS_PATH` for content that should be included in semantic search but not appear in the structured library system.
+
+**Purpose:**
+
+- Content in `_semantic_only` will be indexed for semantic search (`get-semantic-docs`)
+- It will **NOT** appear in `get-library-id` or `get-library-docs` results
+- No `manifest.json` is required or used for this folder
+
+**Supported file types:** `.md`, `.txt`, `.mdx`, `.pdf`, `.json`, `.yaml`, `.yml`, `.xml`, `.csv`
+
+**Structure example:**
+
+```
+LOCAL_DOCS_PATH/
+├── apex-library/           # Regular library with manifest.json
+│   ├── manifest.json
+│   └── triggers.md
+├── lwc-library/            # Regular library with manifest.json
+│   ├── manifest.json
+│   └── components.md
+└── _semantic_only/         # Special folder - no manifest needed
+    ├── additional-notes.md
+    ├── troubleshooting/
+    │   ├── common-issues.md
+    │   └── debug-guide.pdf
+    ├── reference/
+    │   ├── api-examples.txt
+    │   └── config-schema.json
+    └── data/
+        └── sample-data.csv
+```
+
+**Features:**
+
+- **Change detection**: Only processes files modified since last indexing run
+- **Multiple file types**: Supports text, markdown, PDF, JSON, YAML, XML, and CSV files
+- **Warnings**: Alerts you to unsupported file types in the folder
+- **Recursive scanning**: Processes files in subdirectories
+
+**Use cases:**
+
+- Additional reference materials
+- Troubleshooting guides and PDFs
+- Code examples that don't fit into structured topics
+- Configuration files and schemas (JSON, YAML)
+- Legacy documentation
+- Community contributions
+- Personal notes and annotations
+- Data samples and reference tables (CSV)
+
 ### Available Tools
 
-- `resolve-library-id`: Resolves a general library name into a local library ID (the directory name) by searching `manifest.json` files within your `LOCAL_DOCS_PATH`.
+- `get-library-id`: Resolves a general library name into a local library ID (the directory name) by searching `manifest.json` files within your `LOCAL_DOCS_PATH`. Now returns enhanced metadata including difficulties, use cases, semantic groups, and learning paths.
+
   - `libraryName` (required): The name of the library to search for.
-- `get-library-docs`: Fetches documentation for a library from your local file system.
-  - `localLibraryID` (required): The exact local library ID (directory name, e.g., "my-awesome-lib") obtained from `resolve-library-id`.
-  - `topic` (optional): Focuses the documentation on a specific topic defined in the library's `manifest.json` (e.g., "install", "api-reference"). If omitted, uses `default_doc` from the manifest.
+
+- `get-library-docs`: Fetches documentation for a library from your local file system. When requesting a specific topic, automatically includes context from prerequisites, related topics, and next steps.
+
+  - `localLibraryID` (required): The exact local library ID (directory name, e.g., "my-awesome-lib") obtained from `get-library-id`.
+  - `topic` (optional): Focuses the documentation on a specific topic, semantic group name, or learning path name defined in the library's `manifest.json`. If omitted, uses `default_doc` from the manifest.
   - `tokens` (optional, default: `DEFAULT_MAX_TOKENS` environment variable or 5000): Maximum number of characters to return. Content exceeding this limit will be truncated.
+
+- **NEW** `get-semantic-docs`: Performs semantic search across all indexed documentation to find the most relevant content for your query. Uses vector embeddings to find conceptually similar content, even if exact keywords don't match. **Searches across both regular libraries AND the `_semantic_only` folder.**
+
+  - `query` (required): Natural language query describing what you're looking for (e.g., "how to handle bulk data operations in Apex").
+  - `limit` (optional, default: 10): Maximum number of relevant chunks to return.
+  - `library_filter` (optional): Filter to search only within a specific library ID (use `"_semantic_only"` to search only the special folder).
+  - `difficulty_filter` (optional): Filter by difficulty level ("beginner", "intermediate", "advanced").
+
+- **NEW** `get-library-topics`: Lists all topics within a specific library with their metadata (difficulty, use cases, prerequisites, leads_to). Useful for exploring what's available in a library before fetching specific documentation.
+
+  - `localLibraryID` (required): Exact local library ID retrieved from 'get-library-id'.
+  - `difficulty` (optional): Filter topics by difficulty level.
+  - `use_case_keyword` (optional): Filter topics that include this keyword in their use_cases.
+
+- **NEW** `get-topic-details`: Gets detailed metadata for a specific topic without fetching its full documentation content. Useful for understanding a topic's context, difficulty, prerequisites, and relationships.
+  - `localLibraryID` (required): Exact local library ID retrieved from 'get-library-id'.
+  - `topicName` (required): Name of the topic to get details for.
 
 ## Development
 
@@ -219,7 +366,7 @@ Build (assuming `main.ts` is in the root and `tsconfig.json` is configured for `
 npm run build
 ```
 
-This will compile `main.ts` (and files in `lib/`) to `dist/main.js`.
+This will compile `main.ts` (and files in `lib/` and `indexer/`) to `dist/main.js` and `dist/indexer/cli.js`.
 
 ### Local Configuration Example (for development)
 

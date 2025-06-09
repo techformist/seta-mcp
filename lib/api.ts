@@ -6,6 +6,7 @@ import {
   LocalSearchResultItem,
   Topic,
 } from "./types.js";
+import { logger } from "./logger.js";
 
 let localDocsPath: string | undefined = process.env.LOCAL_DOCS_PATH;
 
@@ -16,7 +17,7 @@ export function initializeLocalApi(docsPath?: string) {
   }
   if (!localDocsPath) {
     console.error(
-      "LOCAL_DOCS_PATH environment variable is not set. Local documentation features will not work.",
+      "FATAL: LOCAL_DOCS_PATH environment variable is not set. Local documentation features will not work."
     );
   }
 }
@@ -27,10 +28,10 @@ export function initializeLocalApi(docsPath?: string) {
  * @returns Search results or null if the base path is not configured or an error occurs.
  */
 export async function searchLocalLibraries(
-  query: string,
+  query: string
 ): Promise<LocalSearchResponse | null> {
   if (!localDocsPath) {
-    console.error("LOCAL_DOCS_PATH is not configured.");
+    console.error("FATAL: LOCAL_DOCS_PATH is not configured.");
     return { results: [] };
   }
 
@@ -38,8 +39,8 @@ export async function searchLocalLibraries(
     const Direntsoriginal = await fs.readdir(localDocsPath, {
       withFileTypes: true,
     });
-    const directories = Direntsoriginal.filter((dirent) =>
-      dirent.isDirectory(),
+    const directories = Direntsoriginal.filter(
+      (dirent) => dirent.isDirectory() && dirent.name !== "_semantic_only"
     );
     const results: LocalSearchResultItem[] = [];
     const lowerCaseQuery = query.toLowerCase();
@@ -70,26 +71,21 @@ export async function searchLocalLibraries(
             const tagMatch =
               Array.isArray(topic.tags) &&
               topic.tags.some((tag: string) =>
-                tag.toLowerCase().includes(lowerCaseQuery),
+                tag.toLowerCase().includes(lowerCaseQuery)
               );
             const useCaseMatch =
               Array.isArray(topic.use_cases) &&
               topic.use_cases.some((uc: string) =>
-                uc.toLowerCase().includes(lowerCaseQuery),
+                uc.toLowerCase().includes(lowerCaseQuery)
               );
             const codePatternMatch =
               Array.isArray(topic.code_patterns) &&
               topic.code_patterns.some((cp: string) =>
-                cp.toLowerCase().includes(lowerCaseQuery),
+                cp.toLowerCase().includes(lowerCaseQuery)
               );
 
             if (nameMatch || tagMatch || useCaseMatch || codePatternMatch) {
-              console.log("topicMatch", topic.name, {
-                nameMatch,
-                tagMatch,
-                useCaseMatch,
-                codePatternMatch,
-              });
+              // Note: Logging removed to avoid MCP protocol interference
               topicMatch = true;
             }
           }
@@ -126,7 +122,7 @@ export async function searchLocalLibraries(
     }
     return { results };
   } catch (error) {
-    console.error("Error searching local libraries:", error);
+    logger.error("Error searching local libraries:", error);
     return null; // Or return { results: [] } to indicate an error but conform to type
   }
 }
@@ -137,10 +133,10 @@ export async function searchLocalLibraries(
 function extractSummary(content: string, maxLength: number = 500): string {
   // Look for Key Points or Summary sections
   const keyPointsMatch = content.match(
-    /##?\s*Key\s*Points?\s*\n([\s\S]*?)(?=\n##|\n#|$)/i,
+    /##?\s*Key\s*Points?\s*\n([\s\S]*?)(?=\n##|\n#|$)/i
   );
   const summaryMatch = content.match(
-    /##?\s*Summary\s*\n([\s\S]*?)(?=\n##|\n#|$)/i,
+    /##?\s*Summary\s*\n([\s\S]*?)(?=\n##|\n#|$)/i
   );
 
   if (keyPointsMatch) {
@@ -166,10 +162,10 @@ export async function fetchLocalLibraryDocumentation(
   options: {
     topic?: string;
     tokens?: number; // Character limit
-  } = {},
+  } = {}
 ): Promise<string | null> {
   if (!localDocsPath) {
-    console.error("LOCAL_DOCS_PATH is not configured.");
+    console.error("FATAL: LOCAL_DOCS_PATH is not configured.");
     return null;
   }
 
@@ -191,12 +187,12 @@ export async function fetchLocalLibraryDocumentation(
       if (manifest.semantic_groups && manifest.semantic_groups[searchTerm]) {
         const groupTopics = manifest.semantic_groups[searchTerm];
         allContent.push(
-          `# Semantic Group: ${options.topic}\nThis group covers the following topics:\n`,
+          `# Semantic Group: ${options.topic}\nThis group covers the following topics:\n`
         );
 
         for (const topicName of groupTopics) {
           const topic = manifest.topics.find(
-            (t) => t.name.toLowerCase() === topicName.toLowerCase(),
+            (t) => t.name.toLowerCase() === topicName.toLowerCase()
           );
           if (topic && topic.file) {
             try {
@@ -204,11 +200,11 @@ export async function fetchLocalLibraryDocumentation(
               const topicContent = await fs.readFile(topicFilePath, "utf-8");
               const summary = extractSummary(topicContent, 300);
               allContent.push(
-                `## Topic: ${topic.name} (Difficulty: ${topic.difficulty || "N/A"})\n${summary}\n---`,
+                `## Topic: ${topic.name} (Difficulty: ${topic.difficulty || "N/A"})\n${summary}\n---`
               );
             } catch (err) {
               allContent.push(
-                `## Topic: ${topic.name}\n(Content unavailable)\n---`,
+                `## Topic: ${topic.name}\n(Content unavailable)\n---`
               );
             }
           }
@@ -227,12 +223,12 @@ export async function fetchLocalLibraryDocumentation(
       if (manifest.learning_paths && manifest.learning_paths[searchTerm]) {
         const pathTopics = manifest.learning_paths[searchTerm];
         allContent.push(
-          `# Learning Path: ${options.topic}\nThis learning path includes the following topics in sequence:\n`,
+          `# Learning Path: ${options.topic}\nThis learning path includes the following topics in sequence:\n`
         );
 
         for (const topicName of pathTopics) {
           const topic = manifest.topics.find(
-            (t) => t.name.toLowerCase() === topicName.toLowerCase(),
+            (t) => t.name.toLowerCase() === topicName.toLowerCase()
           );
           if (topic && topic.file) {
             try {
@@ -240,11 +236,11 @@ export async function fetchLocalLibraryDocumentation(
               const topicContent = await fs.readFile(topicFilePath, "utf-8");
               const summary = extractSummary(topicContent, 300);
               allContent.push(
-                `## Topic: ${topic.name} (Difficulty: ${topic.difficulty || "N/A"})\n${summary}\n---`,
+                `## Topic: ${topic.name} (Difficulty: ${topic.difficulty || "N/A"})\n${summary}\n---`
               );
             } catch (err) {
               allContent.push(
-                `## Topic: ${topic.name}\n(Content unavailable)\n---`,
+                `## Topic: ${topic.name}\n(Content unavailable)\n---`
               );
             }
           }
@@ -265,7 +261,7 @@ export async function fetchLocalLibraryDocumentation(
         (t: Topic) =>
           t.name.toLowerCase() === searchTerm ||
           (Array.isArray(t.tags) &&
-            t.tags.some((tag: string) => tag.toLowerCase() === searchTerm)),
+            t.tags.some((tag: string) => tag.toLowerCase() === searchTerm))
       );
 
       // If no exact match, try partial match
@@ -277,8 +273,8 @@ export async function fetchLocalLibraryDocumentation(
               t.tags.some(
                 (tag: string) =>
                   tag.toLowerCase().includes(searchTerm) ||
-                  searchTerm.includes(tag.toLowerCase()),
-              )),
+                  searchTerm.includes(tag.toLowerCase())
+              ))
         );
       }
 
@@ -307,26 +303,26 @@ export async function fetchLocalLibraryDocumentation(
           if (mainTopic.prerequisites?.length && remainingTokens > 200) {
             for (const prereqName of mainTopic.prerequisites) {
               const prereqTopic = manifest.topics.find(
-                (t: Topic) => t.name.toLowerCase() === prereqName.toLowerCase(),
+                (t: Topic) => t.name.toLowerCase() === prereqName.toLowerCase()
               );
               if (prereqTopic && prereqTopic.file && remainingTokens > 100) {
                 try {
                   const prereqFilePath = path.join(libPath, prereqTopic.file);
                   const prereqContent = await fs.readFile(
                     prereqFilePath,
-                    "utf-8",
+                    "utf-8"
                   );
                   const prereqSummary = extractSummary(
                     prereqContent,
-                    Math.min(300, remainingTokens - 50),
+                    Math.min(300, remainingTokens - 50)
                   );
                   allContent.push(
-                    `## PREREQUISITE: ${prereqTopic.name}\n${prereqSummary}`,
+                    `## PREREQUISITE: ${prereqTopic.name}\n${prereqSummary}`
                   );
                   remainingTokens -= prereqSummary.length + 50;
                 } catch (err) {
-                  console.warn(
-                    `Could not read prerequisite topic file: ${prereqTopic.file}`,
+                  logger.warn(
+                    `Could not read prerequisite topic file: ${prereqTopic.file}`
                   );
                 }
               }
@@ -337,27 +333,26 @@ export async function fetchLocalLibraryDocumentation(
           if (mainTopic.related?.length && remainingTokens > 200) {
             for (const relatedName of mainTopic.related) {
               const relatedTopic = manifest.topics.find(
-                (t: Topic) =>
-                  t.name.toLowerCase() === relatedName.toLowerCase(),
+                (t: Topic) => t.name.toLowerCase() === relatedName.toLowerCase()
               );
               if (relatedTopic && relatedTopic.file && remainingTokens > 100) {
                 try {
                   const relatedFilePath = path.join(libPath, relatedTopic.file);
                   const relatedContent = await fs.readFile(
                     relatedFilePath,
-                    "utf-8",
+                    "utf-8"
                   );
                   const relatedSummary = extractSummary(
                     relatedContent,
-                    Math.min(300, remainingTokens - 50),
+                    Math.min(300, remainingTokens - 50)
                   );
                   allContent.push(
-                    `## RELATED: ${relatedTopic.name}\n${relatedSummary}`,
+                    `## RELATED: ${relatedTopic.name}\n${relatedSummary}`
                   );
                   remainingTokens -= relatedSummary.length + 50;
                 } catch (err) {
-                  console.warn(
-                    `Could not read related topic file: ${relatedTopic.file}`,
+                  logger.warn(
+                    `Could not read related topic file: ${relatedTopic.file}`
                   );
                 }
               }
@@ -368,34 +363,33 @@ export async function fetchLocalLibraryDocumentation(
           if (mainTopic.leads_to?.length && remainingTokens > 200) {
             for (const leadsToName of mainTopic.leads_to) {
               const leadsToTopic = manifest.topics.find(
-                (t: Topic) =>
-                  t.name.toLowerCase() === leadsToName.toLowerCase(),
+                (t: Topic) => t.name.toLowerCase() === leadsToName.toLowerCase()
               );
               if (leadsToTopic && leadsToTopic.file && remainingTokens > 100) {
                 try {
                   const leadsToFilePath = path.join(libPath, leadsToTopic.file);
                   const leadsToContent = await fs.readFile(
                     leadsToFilePath,
-                    "utf-8",
+                    "utf-8"
                   );
                   const leadsToSummary = extractSummary(
                     leadsToContent,
-                    Math.min(300, remainingTokens - 50),
+                    Math.min(300, remainingTokens - 50)
                   );
                   allContent.push(
-                    `## NEXT STEPS / LEADS TO: ${leadsToTopic.name}\n${leadsToSummary}`,
+                    `## NEXT STEPS / LEADS TO: ${leadsToTopic.name}\n${leadsToSummary}`
                   );
                   remainingTokens -= leadsToSummary.length + 50;
                 } catch (err) {
-                  console.warn(
-                    `Could not read leads_to topic file: ${leadsToTopic.file}`,
+                  logger.warn(
+                    `Could not read leads_to topic file: ${leadsToTopic.file}`
                   );
                 }
               }
             }
           }
         } catch (err) {
-          console.warn(`Could not read main topic file: ${docFileName}`);
+          logger.warn(`Could not read main topic file: ${docFileName}`);
         }
       }
     }
@@ -420,14 +414,14 @@ export async function fetchLocalLibraryDocumentation(
       // Try to find any .md file as a fallback
       const filesInLib = await fs.readdir(libPath);
       docFileName = filesInLib.find(
-        (f: string) => f.endsWith(".md") || f.endsWith(".txt"),
+        (f: string) => f.endsWith(".md") || f.endsWith(".txt")
       );
       if (!docFileName) {
-        console.error(`No documentation file found for library ${libraryId}.`);
+        logger.error(`No documentation file found for library ${libraryId}.`);
         return null;
       }
-      console.warn(
-        `Using fallback document: ${docFileName} for library ${libraryId}`,
+      logger.warn(
+        `Using fallback document: ${docFileName} for library ${libraryId}`
       );
     }
 
@@ -453,10 +447,7 @@ export async function fetchLocalLibraryDocumentation(
 
     return content;
   } catch (error) {
-    console.error(
-      `Error fetching local documentation for ${libraryId}:`,
-      error,
-    );
+    logger.error(`Error fetching local documentation for ${libraryId}:`, error);
     return null;
   }
 }
