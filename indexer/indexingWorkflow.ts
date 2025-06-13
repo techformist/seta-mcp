@@ -66,7 +66,17 @@ export async function processDocumentationFiles(
   const newState: IndexState = {};
 
   // Track which files from the old state are still present
-  const currentFilePaths = new Set(documentFiles.map((f) => f.relativePath));
+  const normalizePath = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+  const currentFilePaths = new Set(
+    documentFiles.map((f) => normalizePath(f.relativePath))
+  );
+
+  // Debug output for deletion detection
+  console.log(
+    "Existing state keys:",
+    Object.keys(existingState).map(normalizePath)
+  );
+  console.log("Current file paths:", Array.from(currentFilePaths));
 
   // Process current files
   for (let i = 0; i < documentFiles.length; i++) {
@@ -146,7 +156,7 @@ export async function processDocumentationFiles(
 
   // Handle deleted files
   for (const oldFilePath of Object.keys(existingState)) {
-    if (!currentFilePaths.has(oldFilePath)) {
+    if (!currentFilePaths.has(normalizePath(oldFilePath))) {
       stats.deletedFiles++;
       if (options.verbose) {
         console.log(`\n🗑️  File deleted: ${oldFilePath}`);

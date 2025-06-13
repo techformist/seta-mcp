@@ -162,12 +162,10 @@ async function readFileContent(filePath: string): Promise<string> {
         return await fs.readFile(filePath, "utf-8");
 
       case ".pdf":
-        // PDF files - extract text using pdf-parse (dynamic import to avoid initialization issues)
+        // PDF files - extract text using pdfjs-dist (no native dependencies)
         try {
-          const pdfParse = (await import("pdf-parse")).default;
-          const pdfBuffer = await fs.readFile(filePath);
-          const pdfData = await pdfParse(pdfBuffer);
-          return pdfData.text;
+          const { extractPdfText } = await import("./pdfUtils.js");
+          return await extractPdfText(filePath);
         } catch (error) {
           console.error(`Error parsing PDF ${filePath}:`, error);
           return `[PDF content could not be extracted from ${path.basename(filePath)}]`;

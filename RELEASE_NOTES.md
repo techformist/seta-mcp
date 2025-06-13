@@ -1,5 +1,35 @@
 # Release Notes
 
+## Version 0.2.1 - Corporate Environment Fix 🏢
+
+**Release Date:** 2025-01-09
+
+### 🎯 **What's New**
+
+#### 🔧 **Corporate Environment Compatibility**
+
+- **Breaking Change**: Replaced `pdf-parse` with `pdfjs-dist` for PDF text extraction
+- **No Native Dependencies**: Eliminates sharp dependency that requires compilation
+- **Corporate-Friendly**: Works in protected environments without admin privileges
+- **Pure JavaScript**: Uses Mozilla's PDF.js library for reliable PDF processing
+- **Same Functionality**: Maintains all existing PDF text extraction capabilities
+
+### 🐛 **Bug Fixes**
+
+- Fixed Windows compilation issues in corporate environments
+- Resolved sharp dependency conflicts
+- Improved PDF processing reliability
+
+### 🚀 **Migration Guide**
+
+#### For Existing Users:
+
+1. **Update to version `0.2.1`**: `npm install -g @techformist/seta-mcp@latest`
+2. **Re-run the indexer** to test PDF processing: `npx seta-indexer <docs_path>`
+3. **No code changes required** - PDF processing works the same way
+
+---
+
 ## Version 0.2.0 - Major Feature Release 🚀
 
 **Release Date:** 2025-06-09
@@ -43,7 +73,7 @@
 
 ### 🔧 **Technical Enhancements**
 
-- Added `pdf-parse` for PDF text extraction
+- Added `pdfjs-dist` for PDF text extraction (replaced `pdf-parse` in v0.2.1)
 - Implemented file modification time tracking
 - Enhanced error handling and recovery
 - Improved TypeScript types and documentation

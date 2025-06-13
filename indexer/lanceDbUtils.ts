@@ -142,7 +142,7 @@ export async function deleteChunksBySourceFile(
   sourceFilePath: string
 ): Promise<void> {
   try {
-    await table.delete(`originalFilePath = '${sourceFilePath}'`);
+    await table.delete(`"originalFilePath" = '${sourceFilePath}'`);
     // Note: Removed console.log to avoid interfering with MCP stdio protocol
   } catch (error) {
     console.error(`Failed to delete chunks for file ${sourceFilePath}:`, error);

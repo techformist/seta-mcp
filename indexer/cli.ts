@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name("seta-indexer")
   .description("Index Salesforce documentation for semantic search")
-  .version("0.2.0")
+  .version("0.2.1")
   .argument("<folder_name>", "Path to the documentation folder to index")
   .option("-v, --verbose", "Enable verbose logging")
   .option("--force", "Force re-indexing of all files")
