@@ -2,7 +2,7 @@
 
 ## Version 0.2.1 - Corporate Environment Fix 🏢
 
-**Release Date:** 2025-01-09
+**Release Date:** 2025-06-13
 
 ### 🎯 **What's New**
 
