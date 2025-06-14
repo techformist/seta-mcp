@@ -1,6 +1,6 @@
 {
-  "name": "@techformist/seta-mcp",
-  "version": "0.2.2",
+  "name": "seta-mcp",
+  "version": "0.2.3",
   "type": "module",
   "description": "MCP server for documentation from local filesystem",
   "main": "dist/main.js",

@@ -1,5 +1,45 @@
 # Release Notes
 
+## Version 0.2.3 - Package Name Change 📦
+
+**Release Date:** 2025-06-14
+
+### 🔄 **Breaking Change - Package Name Update**
+
+- **Package renamed**: `@techformist/seta-mcp` → `seta-mcp`
+- **Migration required**: Existing users need to reinstall with the new package name
+
+### 🚀 **Migration Guide**
+
+#### For Existing Users:
+
+```bash
+# Uninstall old scoped package
+npm uninstall -g @techformist/seta-mcp
+
+# Install new unscoped package
+npm install -g seta-mcp
+```
+
+#### New Installation:
+
+```bash
+# Install latest version
+npm install -g seta-mcp@latest
+
+# Or use directly
+npx seta-mcp@latest
+```
+
+### 📝 **What Changed**
+
+- All installation commands now use `seta-mcp` instead of `@techformist/seta-mcp`
+- Functionality remains exactly the same
+- No code changes required in your MCP configurations
+- GitHub Actions workflow automatically updated
+
+---
+
 ## Version 0.2.2
 
 **Release Date:** 2025-06-14
@@ -39,7 +79,7 @@
 
 #### For Existing Users:
 
-1. **Update to version `0.2.1`**: `npm install -g @techformist/seta-mcp@latest`
+1. **Update to version `0.2.1`**: `npm install -g seta-mcp@latest`
 2. **Re-run the indexer** to test PDF processing: `npx seta-indexer <docs_path>`
 3. **No code changes required** - PDF processing works the same way
 
@@ -122,10 +162,10 @@
 
 ```bash
 # Install latest version
-npm install -g @techformist/seta-mcp@latest
+npm install -g seta-mcp@latest
 
 # Or use directly
-npx @techformist/seta-mcp@latest
+npx seta-mcp@latest
 ```
 
 ## [NEXT]

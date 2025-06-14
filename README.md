@@ -171,7 +171,7 @@ Ensure `LOCAL_DOCS_PATH` is set in your environment.
 ```bash
 # For published version
 # export LOCAL_DOCS_PATH="/path/to/your/docs"
-npx -y @modelcontextprotocol/inspector npx @techformist/seta-mcp@latest
+npx -y @modelcontextprotocol/inspector npx seta-mcp@latest
 ```
 
 ## Disclaimer
