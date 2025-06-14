@@ -18,7 +18,6 @@ export interface LocalLibraryManifest {
   topics: Topic[]; // Now only an array of Topic objects
   stars?: number;
   totalSnippets?: number;
-  semantic_groups?: Record<string, string[]>;
   learning_paths?: Record<string, string[]>;
 }
 
@@ -32,7 +31,6 @@ export interface LocalSearchResultItem {
   topic_count?: number;
   available_difficulties?: string[];
   sample_use_cases?: string[];
-  available_semantic_groups?: string[];
   available_learning_paths?: string[];
 }
 

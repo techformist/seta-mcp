@@ -108,9 +108,6 @@ export async function searchLocalLibraries(
             topic_count: manifest.topics?.length || 0,
             available_difficulties: Array.from(allDifficulties),
             sample_use_cases: Array.from(allUseCases).slice(0, 5), // Limit to 5 examples
-            available_semantic_groups: manifest.semantic_groups
-              ? Object.keys(manifest.semantic_groups)
-              : [],
             available_learning_paths: manifest.learning_paths
               ? Object.keys(manifest.learning_paths)
               : [],
@@ -182,42 +179,6 @@ export async function fetchLocalLibraryDocumentation(
 
     if (options.topic && Array.isArray(manifest.topics)) {
       const searchTerm = options.topic.toLowerCase();
-
-      // Check if topic is a semantic group
-      if (manifest.semantic_groups && manifest.semantic_groups[searchTerm]) {
-        const groupTopics = manifest.semantic_groups[searchTerm];
-        allContent.push(
-          `# Semantic Group: ${options.topic}\nThis group covers the following topics:\n`
-        );
-
-        for (const topicName of groupTopics) {
-          const topic = manifest.topics.find(
-            (t) => t.name.toLowerCase() === topicName.toLowerCase()
-          );
-          if (topic && topic.file) {
-            try {
-              const topicFilePath = path.join(libPath, topic.file);
-              const topicContent = await fs.readFile(topicFilePath, "utf-8");
-              const summary = extractSummary(topicContent, 300);
-              allContent.push(
-                `## Topic: ${topic.name} (Difficulty: ${topic.difficulty || "N/A"})\n${summary}\n---`
-              );
-            } catch (err) {
-              allContent.push(
-                `## Topic: ${topic.name}\n(Content unavailable)\n---`
-              );
-            }
-          }
-        }
-
-        let combinedContent = allContent.join("\n\n");
-        if (combinedContent.length > maxTokens) {
-          combinedContent =
-            combinedContent.substring(0, maxTokens) +
-            "\n\n(Content truncated due to token limit)";
-        }
-        return combinedContent;
-      }
 
       // Check if topic is a learning path
       if (manifest.learning_paths && manifest.learning_paths[searchTerm]) {

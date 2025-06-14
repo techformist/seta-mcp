@@ -1,5 +1,18 @@
 # Release Notes
 
+## Version 0.2.2
+
+### Major Changes
+
+- **Removed all file scanning, chunking, and `_semantic_only` folder logic** (including `processSemanticOnlyFolder` and `documentProcessor`) from the MCP server. This logic is now part of the vector indexer prompt/spec for a separate library.
+- **Deleted**: `indexer/documentProcessor.ts`
+- The MCP server now only handles documentation lookup and metadata.
+
+### Breaking Changes
+
+- No more file/folder scanning or chunking in this package.
+- Only direct documentation lookup and topic metadata tools remain.
+
 ## Version 0.2.1 - Corporate Environment Fix 🏢
 
 **Release Date:** 2025-06-13
@@ -9,15 +22,15 @@
 #### 🔧 **Corporate Environment Compatibility**
 
 - **Breaking Change**: Replaced `pdf-parse` with `pdfjs-dist` for PDF text extraction
-- **No Native Dependencies**: Eliminates sharp dependency that requires compilation
-- **Corporate-Friendly**: Works in protected environments without admin privileges
+- ~~**No Native Dependencies**: Eliminates sharp dependency that requires compilation~~ This is still an issue since I did not end up changing the transformer library.
+- ~~**Corporate-Friendly**: Works in protected environments without admin privileges~~ Issue persists in secure environments.
 - **Pure JavaScript**: Uses Mozilla's PDF.js library for reliable PDF processing
 - **Same Functionality**: Maintains all existing PDF text extraction capabilities
 
 ### 🐛 **Bug Fixes**
 
 - Fixed Windows compilation issues in corporate environments
-- Resolved sharp dependency conflicts
+- ~~Resolved sharp dependency conflicts~~ (still an issue)
 - Improved PDF processing reliability
 
 ### 🚀 **Migration Guide**
@@ -112,3 +125,18 @@ npm install -g @techformist/seta-mcp@latest
 # Or use directly
 npx @techformist/seta-mcp@latest
 ```
+
+## [NEXT]
+
+### Major Changes
+
+- Removed all vector DB, embedding, and semantic search/indexer logic from the project.
+- Deleted all indexer-related files and code (LanceDB, @xenova/transformers, embedding, and semantic search tools).
+- Cleaned up documentation, types, and utility code to remove all references to semantic search and vector DB.
+- The vector DB/indexer functionality is now intended to be implemented as a separate npx library. See `vector-indexer-prompt.md` for a comprehensive implementation prompt/spec.
+- All file scanning, chunking, and \_semantic_only folder logic (including processSemanticOnlyFolder and documentProcessor) has been removed from the MCP server and moved to the vector indexer prompt/spec. The file indexer/documentProcessor.ts is deleted.
+
+### Breaking Changes
+
+- No more `seta-indexer` CLI or semantic search (`get-semantic-docs`) in this package.
+- Only direct documentation lookup and topic metadata tools remain.

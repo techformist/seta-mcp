@@ -11,32 +11,20 @@ import {
   initializeLocalApi,
   searchLocalLibraries,
   fetchLocalLibraryDocumentation,
-} from "./lib/api.js"; // MODIFIED: Using local API
+} from "./lib/api.js";
 import { formatSearchResults } from "./lib/utils.js";
 import { logger } from "./lib/logger.js";
 
-// Import indexer modules for semantic search
-import { INDEXER_CONFIG } from "./indexer/config.js";
-import {
-  initializeEmbeddingModel,
-  generateEmbeddingForChunk,
-} from "./indexer/embeddingUtils.js";
-import {
-  connectToLanceDb,
-  openOrCreateTable,
-  searchSimilarChunks,
-} from "./indexer/lanceDbUtils.js";
-
-// Initialize Local API with path from environment variable
-const localDocsPath = process.env.LOCAL_DOCS_PATH;
-
-if (!localDocsPath) {
-  console.error(
-    "FATAL: LOCAL_DOCS_PATH environment variable is not set. The server cannot operate without it."
-  );
-  process.exit(1); // Exit if critical env var is missing
-}
-initializeLocalApi(localDocsPath);
+const server = new McpServer({
+  name: "seta",
+  description:
+    "Retrieves documentation and code examples for Salesforce development from local file system.",
+  version: "0.2.0",
+  capabilities: {
+    resources: {},
+    tools: {},
+  },
+});
 
 // Get DEFAULT_MAX_TOKENS from environment variable or use default
 let DEFAULT_MAX_TOKENS = 5000; // This will now be a character limit
@@ -50,65 +38,6 @@ if (process.env.DEFAULT_MAX_TOKENS) {
     );
   }
 }
-
-// Global variables for semantic search
-let embeddingPipeline: any = null;
-let lanceDbConnection: any = null;
-let lanceDbTable: any = null;
-
-// Initialize semantic search components
-async function initializeSemanticSearch() {
-  try {
-    if (!localDocsPath) {
-      logger.warn("LOCAL_DOCS_PATH not set, semantic search unavailable");
-      return;
-    }
-
-    const dbPath = path.join(localDocsPath, INDEXER_CONFIG.LANCEDB_SUBDIR);
-
-    // Check if the database exists
-    if (
-      await fs
-        .access(dbPath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      logger.info("Initializing semantic search components...");
-
-      // Initialize embedding model
-      embeddingPipeline = await initializeEmbeddingModel();
-
-      // Connect to LanceDB
-      lanceDbConnection = await connectToLanceDb(dbPath);
-      lanceDbTable = await openOrCreateTable(
-        lanceDbConnection,
-        INDEXER_CONFIG.TABLE_NAME
-      );
-
-      logger.info("Semantic search initialized successfully");
-    } else {
-      logger.info(
-        "No semantic search database found. Run 'seta-indexer' first to enable semantic search."
-      );
-    }
-  } catch (error) {
-    logger.error("Failed to initialize semantic search:", error);
-    logger.info(
-      "Semantic search will not be available. Run 'seta-indexer' to create the database."
-    );
-  }
-}
-
-const server = new McpServer({
-  name: "seta",
-  description:
-    "Retrieves documentation and code examples for Salesforce development from local file system.", // MODIFIED
-  version: "0.2.0",
-  capabilities: {
-    resources: {},
-    tools: {},
-  },
-});
 
 // Register tools
 server.tool(
@@ -216,7 +145,7 @@ This might happen if:
 1. The local library ID is incorrect (use 'get-library-id' first).
 2. The library's manifest.json is missing, malformed, or doesn't define the topic/semantic group/learning path/default document.
 3. The document file itself is missing or unreadable.
-4. LOCAL_DOCS_PATH is not configured correctly on the server.`, // MODIFIED error message
+4. LOCAL_DOCS_PATH is not configured correctly on the server.`,
           },
         ],
       };
@@ -230,131 +159,6 @@ This might happen if:
         },
       ],
     };
-  }
-);
-
-server.tool(
-  "get-semantic-docs",
-  "Performs semantic search across all indexed documentation to find the most relevant content for your query. This uses vector embeddings to find conceptually similar content, even if the exact keywords don't match. Requires that 'seta-indexer' has been run to create the semantic search database.",
-  {
-    query: z
-      .string()
-      .describe(
-        "Natural language query describing what you're looking for (e.g., 'how to handle bulk data operations in Apex')"
-      ),
-    limit: z
-      .number()
-      .optional()
-      .default(10)
-      .describe("Maximum number of relevant chunks to return (default: 10)"),
-    library_filter: z
-      .string()
-      .optional()
-      .describe("Optional filter to search only within a specific library ID"),
-    difficulty_filter: z
-      .string()
-      .optional()
-      .describe(
-        "Optional filter by difficulty level (e.g., 'beginner', 'intermediate', 'advanced')"
-      ),
-  },
-  async ({ query, limit = 10, library_filter, difficulty_filter }) => {
-    if (!embeddingPipeline || !lanceDbTable) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `❌ Semantic search is not available. 
-
-This could be because:
-1. The semantic search database hasn't been created yet. Run 'seta-indexer <docs_folder>' to create it.
-2. The database failed to initialize on server startup.
-3. The LOCAL_DOCS_PATH doesn't contain a '${INDEXER_CONFIG.LANCEDB_SUBDIR}' directory.
-
-To enable semantic search:
-1. Run: npx @techformist/seta-mcp seta-indexer <path_to_your_docs_folder>
-2. Restart the MCP server`,
-          },
-        ],
-      };
-    }
-
-    try {
-      // Generate embedding for the query
-      const queryEmbedding = await generateEmbeddingForChunk(
-        query,
-        embeddingPipeline
-      );
-
-      // Search for similar chunks
-      const filters: any = {};
-      if (library_filter) filters.libraryId = library_filter;
-      if (difficulty_filter) filters.difficulty = difficulty_filter;
-
-      const results = await searchSimilarChunks(
-        lanceDbTable,
-        queryEmbedding,
-        limit,
-        filters
-      );
-
-      if (results.length === 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `No relevant documentation found for query: "${query}"
-
-Try:
-- Using different keywords or phrases
-- Removing filters if you applied any
-- Checking if the documentation has been indexed with 'seta-indexer'`,
-            },
-          ],
-        };
-      }
-
-      // Format results
-      let responseText = `🔍 Found ${results.length} relevant documentation chunks for: "${query}"\n\n`;
-
-      results.forEach((result, index) => {
-        const score = result._distance
-          ? (1 - result._distance).toFixed(3)
-          : "N/A";
-        responseText += `## Result ${index + 1} (Relevance: ${score})\n`;
-        responseText += `**Library:** ${result.libraryId}\n`;
-        if (result.topicName) {
-          responseText += `**Topic:** ${result.topicName}\n`;
-        }
-        if (result.difficulty) {
-          responseText += `**Difficulty:** ${result.difficulty}\n`;
-        }
-        responseText += `**Source:** ${result.originalFilePath}\n\n`;
-        responseText += `${result.text}\n\n`;
-        responseText += `---\n\n`;
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: responseText,
-          },
-        ],
-      };
-    } catch (error) {
-      console.error("Error performing semantic search:", error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `❌ Error performing semantic search: ${error}
-
-Please check the server logs for more details.`,
-          },
-        ],
-      };
-    }
   }
 );
 
@@ -597,6 +401,17 @@ server.tool(
   }
 );
 
+// Initialize Local API with path from environment variable
+const localDocsPath = process.env.LOCAL_DOCS_PATH;
+
+if (!localDocsPath) {
+  console.error(
+    "FATAL: LOCAL_DOCS_PATH environment variable is not set. The server cannot operate without it."
+  );
+  process.exit(1); // Exit if critical env var is missing
+}
+initializeLocalApi(localDocsPath);
+
 async function main() {
   // LOCAL_DOCS_PATH check is now at the top
   const transport = new StdioServerTransport();
@@ -604,9 +419,6 @@ async function main() {
   logger.info(`seta MCP Server running on stdio`);
   logger.info(`Reading documentation from: ${localDocsPath}`);
   logger.info(`Default maximum characters for docs: ${DEFAULT_MAX_TOKENS}`);
-
-  // Initialize semantic search after server is running
-  await initializeSemanticSearch();
 }
 
 main().catch((error) => {
