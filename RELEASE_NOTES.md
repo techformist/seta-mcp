@@ -2,6 +2,8 @@
 
 ## Version 0.2.2
 
+**Release Date:** 2025-06-14
+
 ### Major Changes
 
 - **Removed all file scanning, chunking, and `_semantic_only` folder logic** (including `processSemanticOnlyFolder` and `documentProcessor`) from the MCP server. This logic is now part of the vector indexer prompt/spec for a separate library.
