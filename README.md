@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/techformist-seta-mcp-badge.png)](https://mseep.ai/app/techformist-seta-mcp)
+
 # Seta MCP - Up-to-date Local Docs for Coding
 
 Assist Salesforce developers to create code and configuration! This is a MCP server that you can run locally or host remotely.
